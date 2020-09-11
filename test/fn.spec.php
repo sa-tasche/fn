@@ -381,6 +381,36 @@ describe('Fun', function() {
             $res = index('a', ['b' => 1], 2);
             expect($res)->equal(2);
         });
+        test('Also works with objects that implement ArrayAccess', function() {
+            class MyClass implements \ArrayAccess
+            {
+                private $container = [];
+
+                public function __construct() {
+                    $this->container = ['one' => 1, 'two' => 2];
+                }
+
+                public function offsetExists($offset) {
+                    return isset($this->container[$offset]);
+                }
+
+                public function offsetGet($offset) {
+                    return isset($this->container[$offset]) ? $this->container[$offset] : null;
+                }
+
+                public function offsetSet($offset, $value) {
+                    /* ... */
+                }
+
+                public function offsetUnset($offset) {
+                    /* ... */
+                }
+            }
+            
+            $object = new MyClass();
+            expect(index('two', $object))->equal(2);
+            expect(index('three', $object, 'else'))->equal('else');
+        });
     });
     describe('indexIn', function() {
         docFn(indexIn::class);
@@ -663,6 +693,40 @@ INTRO;
             expect([$left, $right])->equal([[1,2], [3,4]]);
         });
     });
+    describe('pick', function() {
+        docFn(pick::class);        
+        test('Picks only the given fields from a structured array', function() {
+            $res = pick(['a', 'b'], [
+                'a' => 1,
+                'b' => 2,
+                'c' => 3,
+            ]);
+            expect($res)->equal(['a' => 1, 'b' => 2]);
+        });
+        test('Can be used in curried form', function() {
+            $res = arrayMap(Curried\pick(['id', 'name']), [
+                ['id' => 1, 'name' => 'Foo', 'slug' => 'foo'],
+                ['id' => 2, 'name' => 'Bar', 'slug' => 'bar'],
+            ]);
+            expect($res)->equal([
+                ['id' => 1, 'name' => 'Foo'],
+                ['id' => 2, 'name' => 'Bar'],
+            ]);
+        });
+    });
+    describe('pickBy', function() {
+        docFn(pickBy::class);        
+        test('Picks only the fields that match the pick function from a structured array', function() {
+            $res = pickBy(Curried\spread(function(string $key, int $value): bool {
+                return $value % 2 === 0;
+            }), [
+                'a' => 1,
+                'b' => 2,
+                'c' => 3,
+            ]);
+            expect($res)->equal(['b' => 2]);
+        });
+    });
     describe('pipe', function() {
         docFn(pipe::class);
 
@@ -921,6 +985,12 @@ INTRO;
                 return $a . $b;
             }, ['a', 'b']);
             expect($res)->equal('ab');
+        });
+        test('Can be used in the curried form to unpack tuple arguments', function() {
+            $res = arrayMap(Curried\spread(function(string $first, int $second) {
+                return $first . $second;
+            }), [['a', 1], ['b', 2]]);
+            expect($res)->equal(['a1', 'b2']);
         });
         docOutro("Note: this is basically just an alias for `call_user_func_array` or simply a functional wrapper around the `...` (spread) operator.");
     });

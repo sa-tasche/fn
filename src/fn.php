@@ -10,8 +10,14 @@ function method($name, /* object */ $data, ...$optionalArgs) {
 function prop(string $key, /* object */ $data, $else = null) {
     return \property_exists($data, $key) ? $data->{$key} : $else;
 }
-function index(/* string|int */ $key, array $data, $else = null) {
-    return \array_key_exists($key, $data) ? $data[$key] : $else;
+function index(/* string|int */ $key, /* array|ArrayAccess */ $data, $else = null) {
+    if (\Krak\Fun\isInstance(\ArrayAccess::class, $data)) {
+        $exists = $data->offsetExists($key);
+    }
+    else {
+        $exists = \array_key_exists($key, $data);
+    }
+    return $exists ? $data[$key] : $else;
 }
 
 function setProp(string $key, $value, /* object */ $data) {
@@ -395,6 +401,23 @@ function fromPairs(iterable $iter): iterable {
     foreach ($iter as list($key, $val)) {
         yield $key => $val;
     }
+}
+
+function pick(iterable $fields, array $data): array {
+    $pickedData = [];
+    foreach ($fields as $field) {
+        $pickedData[$field] = $data[$field] ?? null;
+    }
+    return $pickedData;
+}
+function pickBy(callable $pick, array $data): array {
+    $pickedData = [];
+    foreach ($data as $key => $value) {
+        if ($pick([$key, $value])) {
+            $pickedData[$key] = $value;
+        }
+    }
+    return $pickedData;
 }
 
 function within(array $fields, iterable $iter): \Iterator {
